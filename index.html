@@ -444,28 +444,39 @@
 
   /* SEARCH MODAL */
   .search-modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.82);
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.82);
     z-index: 200; display: flex; align-items: flex-start; justify-content: center;
-    padding: clamp(1rem, 4vw, 2rem) 1rem;
+    padding: clamp(0.5rem, 2vw, 2rem) 1rem;
     animation: fadeIn 0.15s ease;
     overflow-y: auto;
+    /* visualViewport JS réécrit top/left/width/height sur Android pour suivre le clavier */
+    box-sizing: border-box;
   }
   .search-modal {
     background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: 20px; padding: clamp(1rem, 4vw, 1.8rem);
+    border-radius: 20px; padding: clamp(0.8rem, 3vw, 1.8rem);
     max-width: 680px; width: 100%;
     flex-shrink: 0;
+    /* Conteneur flex vertical pour que la barre soit toujours visible */
+    max-height: calc(100dvh - 2rem);
+    max-height: calc(100vh - 2rem);
+    display: flex; flex-direction: column;
+    overflow: hidden;
   }
-  .search-modal h2 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(22px, 5vw, 28px); letter-spacing: 2px; margin-bottom: 0.4rem; }
+  .search-modal h2 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(22px, 5vw, 28px); letter-spacing: 2px; margin-bottom: 0.4rem; flex-shrink: 0; }
   .search-bar-wrap {
     display: flex; gap: 8px; margin-bottom: 1rem;
     flex-wrap: wrap;
+    flex-shrink: 0;
   }
   .search-input {
     flex: 1 1 140px; min-width: 0; background: var(--surface2); border: 1.5px solid var(--border);
     border-radius: 12px; padding: 10px 14px;
-    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 16px;
     outline: none; transition: border-color 0.15s;
+    /* font-size 16px évite le zoom auto sur iOS */
   }
   .search-input:focus { border-color: var(--accent); }
   .search-input::placeholder { color: var(--muted); }
@@ -486,19 +497,20 @@
     white-space: nowrap;
   }
   .search-close-btn:hover { border-color: var(--accent); color: var(--text); }
-  /* Sur très petit écran : le bouton Fermer passe en pleine largeur sous la barre */
   @media (max-width: 400px) {
-    .search-close-btn {
-      flex: 1 1 100%;
-      text-align: center;
-    }
+    .search-close-btn { flex: 1 1 100%; text-align: center; }
   }
   .search-meta {
     font-size: 12px; color: var(--muted); margin-bottom: 0.8rem;
-    min-height: 18px;
+    min-height: 18px; flex-shrink: 0;
   }
   .search-meta strong { color: var(--accent); }
-  .search-results { display: flex; flex-direction: column; gap: 8px; }
+  .search-results {
+    display: flex; flex-direction: column; gap: 8px;
+    overflow-y: auto; /* scroll sur les résultats uniquement */
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+  }
   .search-result-item {
     background: var(--surface2); border: 1.5px solid var(--border);
     border-radius: 12px; padding: clamp(10px, 2.5vw, 14px) clamp(12px, 3vw, 16px);
@@ -1853,7 +1865,10 @@ function openCatModal() {
     <div class="cat-modal" onclick="event.stopPropagation()">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
         <h2>CATÉGORIES</h2>
-        <button class="btn-search" onclick="openSearchModal()">🔍 Rechercher</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary" onclick="closeCatModal(null)" style="padding:6px 14px;font-size:14px;">✕ Fermer</button>
+          <button class="btn-search" onclick="openSearchModal()">🔍 Rechercher</button>
+        </div>
       </div>
       <p>Sélectionnez les thèmes qui seront inclus dans le quiz.</p>
       <div class="cat-grid">${items}</div>
@@ -2727,7 +2742,8 @@ function openSearchModal() {
             placeholder="Mot ou phrase… ex : drapeau, Adele, 1789…"
             oninput="runSearch()"
             autocomplete="off"
-            autofocus
+            inputmode="search"
+            enterkeyhint="search"
           />
           <button class="search-clear-btn" onclick="clearSearch()" title="Effacer">✕</button>
           <button class="search-close-btn" onclick="closeSearchModal()">Fermer</button>
@@ -2737,11 +2753,35 @@ function openSearchModal() {
       </div>
     </div>`;
 
-  // Focus auto
-  setTimeout(() => {
+  // Sur mobile : pas de focus() automatique — c'est lui qui déclenche le resize brutal du viewport sur Android.
+  // L'utilisateur tape directement. On écoute visualViewport pour repositionner la modal quand le clavier s'ouvre.
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (!isMobile) {
+    // Desktop : focus immédiat sans problème
     const inp = document.getElementById('search-input');
     if (inp) inp.focus();
-  }, 80);
+  }
+
+  // Repositionnement via visualViewport (Android Chrome/WebView)
+  if (window.visualViewport) {
+    const _vpHandler = () => {
+      const overlay = document.getElementById('search-overlay');
+      if (!overlay) {
+        window.visualViewport.removeEventListener('resize', _vpHandler);
+        window.visualViewport.removeEventListener('scroll', _vpHandler);
+        return;
+      }
+      const vv = window.visualViewport;
+      overlay.style.top    = vv.offsetTop + 'px';
+      overlay.style.left   = vv.offsetLeft + 'px';
+      overlay.style.width  = vv.width + 'px';
+      overlay.style.height = vv.height + 'px';
+    };
+    window.visualViewport.addEventListener('resize', _vpHandler);
+    window.visualViewport.addEventListener('scroll', _vpHandler);
+    // Stocker le handler pour nettoyage à la fermeture
+    container._vpHandler = _vpHandler;
+  }
 }
 
 function closeSearchIfOutside(e) {
@@ -2749,7 +2789,13 @@ function closeSearchIfOutside(e) {
 }
 
 function closeSearchModal() {
-  document.getElementById('search-modal-container').innerHTML = '';
+  const container = document.getElementById('search-modal-container');
+  // Nettoyage du listener visualViewport si présent
+  if (window.visualViewport && container && container._vpHandler) {
+    window.visualViewport.removeEventListener('resize', container._vpHandler);
+    window.visualViewport.removeEventListener('scroll', container._vpHandler);
+  }
+  container.innerHTML = '';
 }
 
 function clearSearch() {
