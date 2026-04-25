@@ -459,9 +459,10 @@
   .search-modal h2 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(22px, 5vw, 28px); letter-spacing: 2px; margin-bottom: 0.4rem; }
   .search-bar-wrap {
     display: flex; gap: 8px; margin-bottom: 1rem;
+    flex-wrap: wrap;
   }
   .search-input {
-    flex: 1; background: var(--surface2); border: 1.5px solid var(--border);
+    flex: 1 1 140px; min-width: 0; background: var(--surface2); border: 1.5px solid var(--border);
     border-radius: 12px; padding: 10px 14px;
     color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px;
     outline: none; transition: border-color 0.15s;
@@ -469,18 +470,29 @@
   .search-input:focus { border-color: var(--accent); }
   .search-input::placeholder { color: var(--muted); }
   .search-clear-btn {
+    flex-shrink: 0;
     background: var(--surface2); border: 1.5px solid var(--border);
     border-radius: 10px; padding: 8px 12px; cursor: pointer;
     color: var(--muted); font-size: 16px; transition: all 0.15s;
+    min-width: 40px; text-align: center;
   }
   .search-clear-btn:hover { border-color: var(--red); color: var(--red); }
   .search-close-btn {
+    flex-shrink: 0;
     background: transparent; border: 1.5px solid var(--border);
     border-radius: 10px; padding: 8px 14px; cursor: pointer;
     color: var(--muted); font-size: 13px; font-weight: 600;
     transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
   }
   .search-close-btn:hover { border-color: var(--accent); color: var(--text); }
+  /* Sur très petit écran : le bouton Fermer passe en pleine largeur sous la barre */
+  @media (max-width: 400px) {
+    .search-close-btn {
+      flex: 1 1 100%;
+      text-align: center;
+    }
+  }
   .search-meta {
     font-size: 12px; color: var(--muted); margin-bottom: 0.8rem;
     min-height: 18px;
@@ -2556,6 +2568,8 @@ function answer(i) {
   opts.forEach(b => b.disabled = true);
   opts[q.ans]?.classList.add('correct');
 
+  const isCorrect = (i === q.ans);
+
   // Pulse the flag on answer for flag questions
   if (isFlagQuestion(q)) {
     const previewZone = document.getElementById('flag-preview-zone');
@@ -2568,8 +2582,6 @@ function answer(i) {
       setTimeout(() => { previewZone.style.transform = 'scale(1)'; }, 400);
     }
   }
-
-  const isCorrect = (i === q.ans);
   const fb = document.getElementById('feedback-zone');
   if (isCorrect) {
     let pts;
