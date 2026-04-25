@@ -1863,12 +1863,10 @@ function openCatModal() {
 
   container.innerHTML = `<div class="cat-modal-overlay" onclick="closeCatModal(event)">
     <div class="cat-modal" onclick="event.stopPropagation()">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
-        <h2>CATÉGORIES</h2>
-        <div style="display:flex;gap:8px;">
-          <button class="btn-secondary" onclick="closeCatModal(null)" style="padding:6px 14px;font-size:14px;">✕ Fermer</button>
-          <button class="btn-search" onclick="openSearchModal()">🔍 Rechercher</button>
-        </div>
+      <h2 style="margin-bottom:0.5rem;">CATÉGORIES</h2>
+      <div style="display:flex;gap:8px;margin-bottom:0.8rem;">
+        <button class="btn-secondary" onclick="closeCatModal(null)" style="flex:1;text-align:center;">✕ Fermer</button>
+        <button class="btn-search" onclick="openSearchModal()" style="flex:1;text-align:center;">🔍 Rechercher</button>
       </div>
       <p>Sélectionnez les thèmes qui seront inclus dans le quiz.</p>
       <div class="cat-grid">${items}</div>
@@ -2763,6 +2761,8 @@ function openSearchModal() {
   }
 
   // Repositionnement via visualViewport (Android Chrome/WebView)
+  // On n'appelle PAS le handler immédiatement — cela écraserait l'overlay avant qu'il soit rendu.
+  // Il se déclenche seulement quand le clavier s'ouvre vraiment (resize).
   if (window.visualViewport) {
     const _vpHandler = () => {
       const overlay = document.getElementById('search-overlay');
@@ -2772,6 +2772,7 @@ function openSearchModal() {
         return;
       }
       const vv = window.visualViewport;
+      overlay.style.position = 'fixed';
       overlay.style.top    = vv.offsetTop + 'px';
       overlay.style.left   = vv.offsetLeft + 'px';
       overlay.style.width  = vv.width + 'px';
@@ -2779,7 +2780,6 @@ function openSearchModal() {
     };
     window.visualViewport.addEventListener('resize', _vpHandler);
     window.visualViewport.addEventListener('scroll', _vpHandler);
-    // Stocker le handler pour nettoyage à la fermeture
     container._vpHandler = _vpHandler;
   }
 }
