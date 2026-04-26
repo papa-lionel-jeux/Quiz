@@ -1408,9 +1408,18 @@ function getFlagImg(optionText, size) {
 }
 
 // Retourne le vrai emoji Unicode du drapeau (ex. 🇫🇷) à partir du nom de pays
+// Gère aussi les drapeaux de subdivision (ex. 🏴󠁧󠁢󠁥󠁮󠁧󠁿 pour l'Angleterre)
 function getFlagEmoji(optionText) {
   const code = getFlagCode(optionText);
-  if (!code || code.length !== 2) return '';
+  if (!code) return '';
+  // Drapeaux de subdivision Unicode (tag sequences)
+  const subdivisionEmojis = {
+    'gb-eng': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', // Angleterre
+    'gb-sct': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', // Écosse
+    'gb-wls': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', // Pays de Galles
+  };
+  if (subdivisionEmojis[code]) return subdivisionEmojis[code];
+  if (code.length !== 2) return '';
   // Les emojis de drapeaux sont construits avec les Regional Indicator Symbols
   const upper = code.toUpperCase();
   return String.fromCodePoint(
@@ -1994,7 +2003,7 @@ function renderQuestion() {
         </div>
       </div>
       ${isFlagQuestion(q) ? `
-        <div id="flag-preview-zone" style="text-align:center;margin:0.3rem 0 0.6rem;">${getFlagImg(q.opts[q.ans], 80) || ''}</div>
+        <div id="flag-preview-zone" style="text-align:center;margin:0.3rem 0 0.6rem;font-size:clamp(64px,18vw,110px);line-height:1;">${getFlagEmoji(q.opts[q.ans]) || getFlagImg(q.opts[q.ans], 80) || ''}</div>
       ` : (q.img ? `<div class="q-img" style="font-size:clamp(60px,15vw,100px);text-align:center">${getIconForQuestion(q)}</div>` : '')}
       ${renderAudioPlayer(getAudioForQuestion(q))}
       <p class="q-text">${q.q}</p>
@@ -2829,8 +2838,11 @@ function runSearch() {
       </div>`;
     }).join('');
 
-    const flagImg = isFlagQuestion(q) ? getFlagImg(q.opts[q.ans], 80) : '';
-    const flagHtml = flagImg ? `<div style="text-align:center;margin:0.4rem 0;">${flagImg}</div>` : '';
+    const flagEmoji = isFlagQuestion(q) ? getFlagEmoji(q.opts[q.ans]) : '';
+    const flagImg = (!flagEmoji && isFlagQuestion(q)) ? getFlagImg(q.opts[q.ans], 80) : '';
+    const flagHtml = flagEmoji
+      ? `<div style="text-align:center;margin:0.4rem 0;font-size:clamp(48px,14vw,80px);line-height:1;">${flagEmoji}</div>`
+      : (flagImg ? `<div style="text-align:center;margin:0.4rem 0;">${flagImg}</div>` : '');
 
     return `<div class="search-result-item">
       <div class="sr-cat">${emoji} ${cat} <span class="sr-diff ${niveau}">${diffLabel}</span></div>
